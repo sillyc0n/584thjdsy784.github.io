@@ -1,0 +1,22 @@
+{
+  "name": "SIPP Portfolio Manager",
+  "short_name": "SIPP Manager",
+  "description": "Manage and optimize your SIPP portfolio with ease",
+  "start_url": "/sipp-portfolio-manager/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "images/portfolio_192_192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "images/portfolio_512_512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["finance", "productivity"]
+}
