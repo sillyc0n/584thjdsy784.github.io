@@ -1,8 +1,8 @@
 {
-  "name": "SIPP Portfolio Manager",
-  "short_name": "SIPP Manager",
+  "name": "Portfolio Manager",
+  "short_name": "Portfolio Manager",
   "description": "Manage and optimize your SIPP portfolio with ease",
-  "start_url": "/sipp-portfolio-manager/",
+  "start_url": "/portfolio-manager/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
