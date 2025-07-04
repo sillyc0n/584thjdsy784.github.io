@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fund Performance Charts</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-moment/1.0.0/chartjs-adapter-moment.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .fund-config {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid #e9ecef;
+        }
+
+        .fund-config h3 {
+            margin-top: 0;
+            color: #495057;
+            font-size: 1.2rem;
+        }
+
+        .fund-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .fund-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            flex-wrap: wrap;
+        }
+
+        .fund-item input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .fund-item label {
+            font-weight: 500;
+            min-width: 60px;
+            color: #495057;
+        }
+
+        .remove-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .remove-btn:hover {
+            background: #c82333;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 1px solid #e9ecef;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        select, button {
+            padding: 12px 16px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        select:focus, button:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .time-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .time-btn {
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .time-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .time-btn.active {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .metric-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .metric-btn {
+            padding: 8px 16px;
+            border: 2px solid #28a745;
+            background: white;
+            color: #28a745;
+            border-radius: 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .metric-btn:hover {
+            background: #28a745;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .metric-btn.active {
+            background: #28a745;
+            color: white;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 500px;
+            margin-bottom: 30px;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            font-size: 18px;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .success {
+            color: #155724;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .debug {
+            background: #e3f2fd;
+            border: 1px solid #90caf9;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            color: #0d47a1;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .control-group {
+                width: 100%;
+            }
+            
+            .time-buttons, .metric-buttons {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📈 Fund Performance Dashboard</h1>
+        
+        <div class="fund-config">
+            <h3>Fund Configuration</h3>
+            <div class="fund-list" id="fundList">
+                <!-- Fund items will be dynamically added here -->
+            </div>
+            <button onclick="addFund()">➕ Add Fund</button>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Chart Mode:</label>
+                <select id="chartMode">
+                    <option value="single">Single Fund</option>
+                    <option value="all">All Funds</option>
+                </select>
+            </div>
+
+            <div class="control-group" id="fundSelectGroup">
+                <label>Select Fund:</label>
+                <select id="fundSelect">
+                    <option value="0">Sample Fund (F000005OVE)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Time Period:</label>
+                <div class="time-buttons">
+                    <button class="time-btn" onclick="setTimePeriod('6m')">6M</button>
+                    <button class="time-btn active" onclick="setTimePeriod('1y')">1Y</button>
+                    <button class="time-btn" onclick="setTimePeriod('3y')">3Y</button>
+                    <button class="time-btn" onclick="setTimePeriod('5y')">5Y</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Metric:</label>
+                <div class="metric-buttons">
+                    <button class="metric-btn active" onclick="setMetric('nav')">NAV</button>
+                    <button class="metric-btn" onclick="setMetric('totalReturn')">Total Return</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <button onclick="fetchData()" style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; font-weight: 600;">
+                    🔄 Update Chart
+                </button>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="chart"></canvas>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // Configuration
+        let funds = [];
+        let currentFund = 0;
+        let currentPeriod = '1y';
+        let currentMetric = 'nav';
+        let chartMode = 'single';
+        let chart = null;
+        let isFetching = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFundsFromSession();
+            updateFundSelect();
+            setupEventListeners();
+            fetchData();
+        });
+
+        function setupEventListeners() {
+            // Chart mode selector
+            document.getElementById('chartMode').addEventListener('change', function() {
+                chartMode = this.value;
+                toggleFundSelect();
+                fetchData();
+            });
+
+            // Fund selector
+            document.getElementById('fundSelect').addEventListener('change', function() {
+                currentFund = parseInt(this.value);
+                if (chartMode === 'single') {
+                    fetchData();
+                }
+            });
+
+            // Add event listeners to existing fund inputs
+            document.querySelectorAll('.fund-symbol, .fund-name').forEach(input => {
+                input.addEventListener('input', updateFundsFromInputs);
+            });
+        }
+
+        function toggleFundSelect() {
+            const fundSelectGroup = document.getElementById('fundSelectGroup');
+            if (chartMode === 'single') {
+                fundSelectGroup.style.display = 'flex';
+            } else {
+                fundSelectGroup.style.display = 'none';
+            }
+        }
+
+        function addFund() {
+            const fundList = document.getElementById('fundList');
+            const fundItem = document.createElement('div');
+            fundItem.className = 'fund-item';
+            fundItem.innerHTML = `
+                <label>Symbol:</label>
+                <input type="text" class="fund-symbol" placeholder="Enter fund symbol">
+                <label>Name:</label>
+                <input type="text" class="fund-name" placeholder="Enter fund name">
+                <button class="remove-btn" onclick="removeFund(this)">×</button>
+            `;
+            fundList.appendChild(fundItem);
+            
+            // Add event listeners to new inputs
+            const symbolInput = fundItem.querySelector('.fund-symbol');
+            const nameInput = fundItem.querySelector('.fund-name');
+            
+            symbolInput.addEventListener('input', updateFundsFromInputs);
+            nameInput.addEventListener('input', updateFundsFromInputs);
+        }
+
+        function removeFund(button) {
+            const fundItem = button.parentElement;
+            fundItem.remove();
+            updateFundsFromInputs();
+        }
+
+        function updateFundsFromInputs() {
+            const fundItems = document.querySelectorAll('.fund-item');
+            funds = [];
+            
+            fundItems.forEach(item => {
+                const symbol = item.querySelector('.fund-symbol').value.trim();
+                const name = item.querySelector('.fund-name').value.trim();
+                if (symbol && name) {
+                    funds.push({ symbol, name });
+                }
+            });
+            
+            saveFundsToSession();
+            updateFundSelect();
+        }
+
+        function saveFundsToSession() {
+            sessionStorage.setItem('funds', JSON.stringify(funds));
+        }
+
+        function loadFundsFromSession() {
+            const storedFunds = sessionStorage.getItem('funds');
+            if (storedFunds) {
+                funds = JSON.parse(storedFunds);
+                rebuildFundInputs();
+            } else {
+                // Default fund if nothing is in session storage
+                funds = [{ symbol: 'F000005OVE', name: 'Sample Fund' }];
+            }
+        }
+
+        function rebuildFundInputs() {
+            const fundList = document.getElementById('fundList');
+            fundList.innerHTML = ''; // Clear existing inputs
+
+            if (funds.length === 0) {
+                // If all funds were removed, add one empty input
+                addFund(); 
+            } else {
+                funds.forEach(fund => {
+                    const fundItem = document.createElement('div');
+                    fundItem.className = 'fund-item';
+                    fundItem.innerHTML = `
+                        <label>Symbol:</label>
+                        <input type="text" class="fund-symbol" value="${fund.symbol}" placeholder="Enter fund symbol">
+                        <label>Name:</label>
+                        <input type="text" class="fund-name" value="${fund.name}" placeholder="Enter fund name">
+                        <button class="remove-btn" onclick="removeFund(this)">×</button>
+                    `;
+                    fundList.appendChild(fundItem);
+                });
+            }
+        }
+
+        function updateFundSelect() {
+            const select = document.getElementById('fundSelect');
+            select.innerHTML = '';
+            
+            funds.forEach((fund, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${fund.name} (${fund.symbol})`;
+                select.appendChild(option);
+            });
+            
+            // Ensure currentFund is within bounds
+            if (currentFund >= funds.length) {
+                currentFund = 0;
+            }
+            
+            select.value = currentFund;
+        }
+
+        function setTimePeriod(period) {
+            currentPeriod = period;
+            document.querySelectorAll('.time-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            fetchData();
+        }
+
+        function setMetric(metric) {
+            currentMetric = metric;
+            document.querySelectorAll('.metric-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            fetchData();
+        }
+
+        function getDateRange(period) {
+            const endDate = new Date();
+            const startDate = new Date();
+            
+            switch(period) {
+                case '6m':
+                    startDate.setMonth(endDate.getMonth() - 6);
+                    break;
+                case '1y':
+                    startDate.setFullYear(endDate.getFullYear() - 1);
+                    break;
+                case '3y':
+                    startDate.setFullYear(endDate.getFullYear() - 3);
+                    break;
+                case '5y':
+                    startDate.setFullYear(endDate.getFullYear() - 5);
+                    break;
+            }
+            
+            return {
+                startDate: startDate.toISOString().split('T')[0],
+                endDate: endDate.toISOString().split('T')[0]
+            };
+        }
+
+        async function fetchData() {
+            if (isFetching) {
+                console.log('Fetch already in progress, skipping.');
+                return;
+            }
+
+            if (funds.length === 0) {
+                showStatus('Please configure at least one fund', 'error');
+                return;
+            }
+
+            isFetching = true;
+            const { startDate, endDate } = getDateRange(currentPeriod);
+            showStatus('Loading data...', 'loading');
+            
+            try {
+                if (chartMode === 'single') {
+                    await fetchSingleFundData(startDate, endDate);
+                } else {
+                    await fetchAllFundsData(startDate, endDate);
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                showStatus(`Error loading data: ${error.message}`, 'error');
+            } finally {
+                isFetching = false;
+            }
+        }
+
+        async function fetchSingleFundData(startDate, endDate) {
+            const fund = funds[currentFund];
+            const url = `https://quotes.sillyc0n.workers.dev/ms?query=${fund.symbol}:totalReturn,nav&frequency=d&startDate=${startDate}&endDate=${endDate}`;
+            
+            showStatus(`Fetching data from: ${url}`, 'debug');
+            
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            // Debug: Show raw response
+            console.log('Raw API Response:', data);
+            showStatus(`Raw response: ${JSON.stringify(data).substring(0, 200)}...`, 'debug');
+            
+            // Parse response according to the expected format
+            if (data && Array.isArray(data) && data.length > 0) {
+                const fundData = data[0]; // Get first item from array
+                
+                if (fundData && fundData.queryKey && fundData.series && Array.isArray(fundData.series)) {
+                    // Validate that we have the expected data structure
+                    const series = fundData.series;
+                    
+                    if (series.length > 0) {
+                        // Check if the first item has the expected properties
+                        const firstItem = series[0];
+                        if (firstItem && firstItem.date && (firstItem.nav !== undefined || firstItem.totalReturn !== undefined)) {
+                            updateChart([{ fund: fund, data: series }]);
+                            showStatus(`Data loaded successfully for ${fund.name} (${series.length} data points)`, 'success');
+                        } else {
+                            throw new Error('Invalid data structure: missing required properties (date, nav, totalReturn)');
+                        }
+                    } else {
+                        throw new Error('No data points found in series');
+                    }
+                } else {
+                    throw new Error('Invalid response format: missing queryKey or series array');
+                }
+            } else {
+                throw new Error('Invalid response format: expected array with at least one item');
+            }
+        }
+
+        async function fetchAllFundsData(startDate, endDate) {
+            const promises = funds.map(async (fund) => {
+                const url = `https://quotes.sillyc0n.workers.dev/ms?query=${fund.symbol}:totalReturn,nav&frequency=d&startDate=${startDate}&endDate=${endDate}`;
+                
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error for ${fund.symbol}! status: ${response.status} - ${response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Parse response according to the expected format
+                    if (data && Array.isArray(data) && data.length > 0) {
+                        const fundData = data[0]; // Get first item from array
+                        
+                        if (fundData && fundData.queryKey && fundData.series && Array.isArray(fundData.series)) {
+                            const series = fundData.series;
+                            
+                            if (series.length > 0) {
+                                // Check if the first item has the expected properties
+                                const firstItem = series[0];
+                                if (firstItem && firstItem.date && (firstItem.nav !== undefined || firstItem.totalReturn !== undefined)) {
+                                    return { fund: fund, data: series };
+                                } else {
+                                    throw new Error('Invalid data structure: missing required properties');
+                                }
+                            } else {
+                                throw new Error('No data points found in series');
+                            }
+                        } else {
+                            throw new Error('Invalid response format: missing queryKey or series array');
+                        }
+                    } else {
+                        throw new Error('Invalid response format: expected array with at least one item');
+                    }
+                } catch (error) {
+                    console.warn(`Error fetching data for ${fund.symbol}:`, error);
+                    return null;
+                }
+            });
+
+            const results = await Promise.all(promises);
+            const validResults = results.filter(result => result !== null);
+            
+            if (validResults.length > 0) {
+                updateChart(validResults);
+                showStatus(`Data loaded successfully for ${validResults.length} fund(s)`, 'success');
+            } else {
+                throw new Error('No valid data received for any funds');
+            }
+        }
+
+        function updateChart(fundDataArray) {
+            const ctx = document.getElementById('chart').getContext('2d');
+
+            if (chart) {
+                chart.destroy();
+                chart = null;
+            }
+
+            const datasets = fundDataArray.map((fundData, index) => {
+                const colors = [
+                    '#667eea', '#28a745', '#dc3545', '#ffc107', '#17a2b8',
+                    '#6610f2', '#e83e8c', '#fd7e14', '#20c997', '#6f42c1'
+                ];
+                const color = colors[index % colors.length];
+
+                const validData = fundData.data.filter(item =>
+                    item[currentMetric] !== null &&
+                    item[currentMetric] !== undefined &&
+                    !isNaN(item[currentMetric])
+                );
+
+                if (validData.length === 0) {
+                    return null;
+                }
+
+                const baseline = validData[0][currentMetric];
+
+                const processedData = validData.map(item => {
+                    const currentValue = item[currentMetric];
+                    const percentageChange = baseline !== 0 ? ((currentValue - baseline) / baseline) * 100 : 0;
+                    return {
+                        x: new Date(item.date),
+                        y: percentageChange
+                    };
+                });
+
+                return {
+                    label: `${fundData.fund.name} - ${currentMetric.toUpperCase()}`,
+                    data: processedData,
+                    borderColor: color,
+                    backgroundColor: color + '20',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    pointBackgroundColor: color,
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                };
+            }).filter(Boolean);
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: { 
+                                font: { size: 12, weight: 'bold' },
+                                usePointStyle: true,
+                                pointStyle: 'line'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: `Fund Performance - ${currentPeriod.toUpperCase()} - ${currentMetric.toUpperCase()}`,
+                            font: { size: 16, weight: 'bold' }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y.toFixed(2) + '%';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                displayFormats: {
+                                    day: 'MMM DD',
+                                    week: 'MMM DD',
+                                    month: 'MMM YYYY',
+                                    quarter: 'MMM YYYY',
+                                    year: 'YYYY'
+                                }
+                            },
+                            title: { display: true, text: 'Date', font: { size: 12, weight: 'bold' } },
+                            grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                            ticks: { maxTicksLimit: 8, font: { size: 10 } }
+                        },
+                        y: {
+                            title: { display: true, text: 'Performance (%)', font: { size: 12, weight: 'bold' } },
+                            grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                            ticks: {
+                                font: { size: 10 },
+                                callback: function(value) {
+                                    return value.toFixed(2) + '%';
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="${type}">${message}</div>`;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusDiv.innerHTML = '';
+                }, 5000);
+            } else if (type === 'debug') {
+                setTimeout(() => {
+                    statusDiv.innerHTML = '';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html>

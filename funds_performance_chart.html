@@ -237,7 +237,7 @@
         // Load fund data from API
         async function loadFundData(symbol) {
             try {
-                const response = await fetch(`https://quotes.sillyc0n.workers.dev/?symbol=${symbol}&range=max`);
+                const response = await fetch(`https://quotes.sillyc0n.workers.dev/yf?symbol=${symbol}&range=max`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }

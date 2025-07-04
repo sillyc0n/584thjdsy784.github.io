@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fund Performance Charts</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .fund-config {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid #e9ecef;
+        }
+
+        .fund-config h3 {
+            margin-top: 0;
+            color: #495057;
+            font-size: 1.2rem;
+        }
+
+        .fund-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .fund-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .fund-item input[type="text"] {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .fund-item label {
+            font-weight: 500;
+            min-width: 60px;
+            color: #495057;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 1px solid #e9ecef;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        select, button {
+            padding: 12px 16px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        select:focus, button:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .time-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .time-btn {
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .time-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .time-btn.active {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .metric-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .metric-btn {
+            padding: 8px 16px;
+            border: 2px solid #28a745;
+            background: white;
+            color: #28a745;
+            border-radius: 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .metric-btn:hover {
+            background: #28a745;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .metric-btn.active {
+            background: #28a745;
+            color: white;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 500px;
+            margin-bottom: 30px;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            font-size: 18px;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .success {
+            color: #155724;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .control-group {
+                width: 100%;
+            }
+            
+            .time-buttons, .metric-buttons {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📈 Fund Performance Dashboard</h1>
+        
+        <div class="fund-config">
+            <h3>Fund Configuration</h3>
+            <div class="fund-list" id="fundList">
+                <div class="fund-item">
+                    <label>Symbol:</label>
+                    <input type="text" class="fund-symbol" value="F000005OVE" placeholder="Enter fund symbol">
+                    <label>Name:</label>
+                    <input type="text" class="fund-name" value="Sample Fund" placeholder="Enter fund name">
+                </div>
+            </div>
+            <button onclick="addFund()">➕ Add Fund</button>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Select Fund:</label>
+                <select id="fundSelect">
+                    <option value="0">Sample Fund (F000005OVE)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Time Period:</label>
+                <div class="time-buttons">
+                    <button class="time-btn" onclick="setTimePeriod('6m')">6M</button>
+                    <button class="time-btn active" onclick="setTimePeriod('1y')">1Y</button>
+                    <button class="time-btn" onclick="setTimePeriod('3y')">3Y</button>
+                    <button class="time-btn" onclick="setTimePeriod('5y')">5Y</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Metric:</label>
+                <div class="metric-buttons">
+                    <button class="metric-btn active" onclick="setMetric('nav')">NAV</button>
+                    <button class="metric-btn" onclick="setMetric('totalReturn')">Total Return</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <button onclick="fetchData()" style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; font-weight: 600;">
+                    🔄 Update Chart
+                </button>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="chart"></canvas>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // Configuration
+        let funds = [
+            { symbol: 'F000005OVE', name: 'Sample Fund' }
+        ];
+        let currentFund = 0;
+        let currentPeriod = '1y';
+        let currentMetric = 'nav';
+        let chart = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateFundSelect();
+            fetchData();
+        });
+
+        function addFund() {
+            const fundList = document.getElementById('fundList');
+            const fundItem = document.createElement('div');
+            fundItem.className = 'fund-item';
+            fundItem.innerHTML = `
+                <label>Symbol:</label>
+                <input type="text" class="fund-symbol" placeholder="Enter fund symbol">
+                <label>Name:</label>
+                <input type="text" class="fund-name" placeholder="Enter fund name">
+                <button onclick="removeFund(this)" style="background: #dc3545; color: white; border: none; border-radius: 50%; width: 30px; height: 30px;">×</button>
+            `;
+            fundList.appendChild(fundItem);
+            
+            // Add event listeners to update funds array
+            const symbolInput = fundItem.querySelector('.fund-symbol');
+            const nameInput = fundItem.querySelector('.fund-name');
+            
+            symbolInput.addEventListener('input', updateFundsFromInputs);
+            nameInput.addEventListener('input', updateFundsFromInputs);
+        }
+
+        function removeFund(button) {
+            button.parentElement.remove();
+            updateFundsFromInputs();
+        }
+
+        function updateFundsFromInputs() {
+            const fundItems = document.querySelectorAll('.fund-item');
+            funds = [];
+            
+            fundItems.forEach(item => {
+                const symbol = item.querySelector('.fund-symbol').value.trim();
+                const name = item.querySelector('.fund-name').value.trim();
+                if (symbol && name) {
+                    funds.push({ symbol, name });
+                }
+            });
+            
+            updateFundSelect();
+        }
+
+        function updateFundSelect() {
+            const select = document.getElementById('fundSelect');
+            select.innerHTML = '';
+            
+            funds.forEach((fund, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${fund.name} (${fund.symbol})`;
+                select.appendChild(option);
+            });
+            
+            select.value = currentFund;
+            select.addEventListener('change', function() {
+                currentFund = parseInt(this.value);
+                fetchData();
+            });
+        }
+
+        function setTimePeriod(period) {
+            currentPeriod = period;
+            document.querySelectorAll('.time-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            fetchData();
+        }
+
+        function setMetric(metric) {
+            currentMetric = metric;
+            document.querySelectorAll('.metric-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            fetchData();
+        }
+
+        function getDateRange(period) {
+            const endDate = new Date();
+            const startDate = new Date();
+            
+            switch(period) {
+                case '6m':
+                    startDate.setMonth(endDate.getMonth() - 6);
+                    break;
+                case '1y':
+                    startDate.setFullYear(endDate.getFullYear() - 1);
+                    break;
+                case '3y':
+                    startDate.setFullYear(endDate.getFullYear() - 3);
+                    break;
+                case '5y':
+                    startDate.setFullYear(endDate.getFullYear() - 5);
+                    break;
+            }
+            
+            return {
+                startDate: startDate.toISOString().split('T')[0],
+                endDate: endDate.toISOString().split('T')[0]
+            };
+        }
+
+        async function fetchData() {
+            if (funds.length === 0) {
+                showStatus('Please configure at least one fund', 'error');
+                return;
+            }
+
+            const fund = funds[currentFund];
+            const { startDate, endDate } = getDateRange(currentPeriod);
+            
+            const url = `https://quotes.sillyc0n.workers.dev/ms?query=${fund.symbol}:totalReturn,nav&frequency=d&startDate=${startDate}&endDate=${endDate}`;
+            
+            showStatus('Loading data...', 'loading');
+            
+            try {
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data && data.length > 0 && data[0].series) {
+                    updateChart(data[0].series, fund.name);
+                    showStatus(`Data loaded successfully for ${fund.name}`, 'success');
+                } else {
+                    throw new Error('No data received or invalid format');
+                }
+                
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                showStatus(`Error loading data: ${error.message}`, 'error');
+            }
+        }
+
+        function updateChart(data, fundName) {
+            const ctx = document.getElementById('chart').getContext('2d');
+            
+            // Prepare data for Chart.js
+            const labels = data.map(item => item.date);
+            const values = data.map(item => item[currentMetric]);
+            
+            // Destroy existing chart
+            if (chart) {
+                chart.destroy();
+            }
+            
+            // Create new chart
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `${fundName} - ${currentMetric.toUpperCase()}`,
+                        data: values,
+                        borderColor: currentMetric === 'nav' ? '#667eea' : '#28a745',
+                        backgroundColor: currentMetric === 'nav' ? 'rgba(102, 126, 234, 0.1)' : 'rgba(40, 167, 69, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: currentMetric === 'nav' ? '#667eea' : '#28a745',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: `${fundName} Performance - ${currentPeriod.toUpperCase()}`,
+                            font: {
+                                size: 18,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Date',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                display: true,
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: currentMetric === 'nav' ? 'NAV' : 'Total Return',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                display: true,
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    hover: {
+                        animationDuration: 300
+                    }
+                }
+            });
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="${type}">${message}</div>`;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusDiv.innerHTML = '';
+                }, 3000);
+            }
+        }
+
+        // Add event listeners to existing fund inputs
+        document.querySelectorAll('.fund-symbol, .fund-name').forEach(input => {
+            input.addEventListener('input', updateFundsFromInputs);
+        });
+    </script>
+</body>
+</html>
