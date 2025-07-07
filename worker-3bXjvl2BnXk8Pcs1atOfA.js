@@ -1,0 +1,1 @@
+(()=>{"use strict";self.addEventListener("install",e=>{console.log("Custom service worker installed.")}),self.addEventListener("activate",e=>{console.log("Custom service worker activated.")}),self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(t=>t||fetch(e.request)))})})();
