@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📈 Fund Performance Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .controls-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .control-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        
+        .control-group select, .control-group input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .fund-management {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #1e7e34;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 500px;
+            margin-top: 20px;
+        }
+        
+        .metric-help {
+            background: #e9ecef;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .metric-help h4 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        
+        .metric-help ul {
+            margin-bottom: 0;
+        }
+        
+        .insufficient-data {
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        #rollingWindowConfig {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        
+        .status-message {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <h1 class="header">📈 Fund Performance Dashboard</h1>
+        
+        <div class="controls-section">
+            <div class="control-group">
+                <label for="chartMode">Chart Mode:</label>
+                <select id="chartMode">
+                    <option value="single">Single Fund</option>
+                    <option value="all">All Funds</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="fundSelector">Select Fund:</label>
+                <div class="fund-management">
+                    <select id="fundSelector">
+                        <option value="F000005OVE">Sample Fund (F000005OVE)</option>
+                    </select>
+                    <button class="btn btn-success" onclick="addFund()">➕ Add Fund</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label for="timePeriod">Time Period:</label>
+                <select id="timePeriod">
+                    <option value="6M">6M</option>
+                    <option value="1Y" selected>1Y</option>
+                    <option value="3Y">3Y</option>
+                    <option value="5Y">5Y</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="metricSelector">Metric:</label>
+                <select id="metricSelector">
+                    <option value="nav">NAV</option>
+                    <option value="totalReturn">Total Return</option>
+                    <option value="rollingSharpe">Rolling Sharpe Ratio</option>
+                </select>
+                
+                <div id="rollingWindowConfig" style="display: none;">
+                    <label for="windowSize">Rolling Window:</label>
+                    <select id="windowSize">
+                        <option value="30">1 Month (30 days)</option>
+                        <option value="90" selected>3 Months (90 days)</option>
+                        <option value="180">6 Months (180 days)</option>
+                        <option value="252">1 Year (252 days)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <button class="btn btn-primary" onclick="updateChart()">🔄 Update Chart</button>
+            </div>
+        </div>
+        
+        <div id="sharpeHelp" class="metric-help" style="display: none;">
+            <h4>Rolling Sharpe Ratio</h4>
+            <p>Measures risk-adjusted returns over a rolling time window using the formula:</p>
+            <p><strong>Sharpe Ratio = (Mean Return - Risk-Free Rate) / Standard Deviation of Returns</strong></p>
+            <p><strong>Interpretation:</strong></p>
+            <ul>
+                <li>Values > 1: Good risk-adjusted performance</li>
+                <li>Values > 2: Very good performance</li>
+                <li>Values > 3: Excellent performance</li>
+                <li>Negative values: Returns below risk-free rate</li>
+            </ul>
+            <p><em>Risk-free rate is set to 0% when unavailable. Rolling window starts from the first possible calculation date.</em></p>
+        </div>
+        
+        <div class="chart-container">
+            <canvas id="performanceChart"></canvas>
+        </div>
+        
+        <div id="chartStatus" class="status-message">
+            Select a metric and click "Update Chart" to view real fund performance data
+        </div>
+    </div>
+
+    <script>
+        let chart = null;
+        
+        // Fetch real fund data from API
+        async function fetchFundData(symbol, startDate = '1900-01-01', endDate = null) {
+            if (!endDate) {
+                endDate = new Date().toISOString().split('T')[0];
+            }
+            
+            const url = `https://quotes.sillyc0n.workers.dev/ms?query=${symbol}:totalReturn,nav&frequency=d&startDate=${startDate}&endDate=${endDate}`;
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                if (!data || data.length === 0 || !data[0].series) {
+                    throw new Error('No data returned from API');
+                }
+                
+                const series = data[0].series;
+                const processedData = [];
+                
+                for (let i = 0; i < series.length; i++) {
+                    const current = series[i];
+                    const previous = i > 0 ? series[i - 1] : null;
+                    
+                    // Calculate daily return from totalReturn
+                    let dailyReturn = 0;
+                    if (previous && previous.totalReturn && current.totalReturn) {
+                        dailyReturn = (current.totalReturn - previous.totalReturn) / previous.totalReturn;
+                    }
+                    
+                    processedData.push({
+                        date: current.date,
+                        nav: current.nav || null,
+                        totalReturn: current.totalReturn || null,
+                        dailyReturn: dailyReturn
+                    });
+                }
+                
+                return processedData;
+                
+            } catch (error) {
+                console.error('Error fetching fund data:', error);
+                throw error;
+            }
+        }
+        
+        // Get time period boundaries
+        function getTimePeriodBoundaries(endDate, timePeriod) {
+            const end = new Date(endDate);
+            const start = new Date(end);
+            
+            switch(timePeriod) {
+                case '6M':
+                    start.setMonth(start.getMonth() - 6);
+                    break;
+                case '1Y':
+                    start.setFullYear(start.getFullYear() - 1);
+                    break;
+                case '3Y':
+                    start.setFullYear(start.getFullYear() - 3);
+                    break;
+                case '5Y':
+                    start.setFullYear(start.getFullYear() - 5);
+                    break;
+            }
+            
+            return { start, end };
+        }
+        
+        // Filter data based on time period
+        function filterDataByPeriod(data, timePeriod) {
+            if (!data || data.length === 0) return data;
+            
+            const endDate = new Date(data[data.length - 1].date);
+            const boundaries = getTimePeriodBoundaries(endDate, timePeriod);
+            
+            return data.filter(item => {
+                const itemDate = new Date(item.date);
+                return itemDate >= boundaries.start && itemDate <= boundaries.end;
+            });
+        }
+        
+        // Calculate total return percentage from totalReturn values
+        function calculateTotalReturnPercentage(data) {
+            if (!data || data.length === 0) return [];
+            
+            const baseValue = data[0].totalReturn;
+            if (!baseValue) return [];
+            
+            return data.map(item => {
+                if (!item.totalReturn) return null;
+                return ((item.totalReturn - baseValue) / baseValue) * 100;
+            });
+        }
+        
+        // Calculate rolling Sharpe ratio - PROPERLY FIXED VERSION
+        function calculateRollingSharpe(fullData, windowSize, timePeriod, riskFreeRate = 0) {
+            if (!fullData || fullData.length < windowSize) {
+                return { ratios: [], dates: [] };
+            }
+            
+            // First, we need to determine what data we actually need
+            // We need to start fetching data early enough to have windowSize days 
+            // before our desired time period starts
+            const endDate = new Date(fullData[fullData.length - 1].date);
+            const boundaries = getTimePeriodBoundaries(endDate, timePeriod);
+            
+            // Find the index where our desired time period starts
+            let timePeriodStartIndex = -1;
+            for (let i = 0; i < fullData.length; i++) {
+                const date = new Date(fullData[i].date);
+                if (date >= boundaries.start) {
+                    timePeriodStartIndex = i;
+                    break;
+                }
+            }
+            
+            if (timePeriodStartIndex === -1) {
+                return { ratios: [], dates: [] };
+            }
+            
+            // We need to start calculating from at least windowSize days before
+            // the time period start to have valid rolling calculations
+            const calculationStartIndex = Math.max(windowSize - 1, timePeriodStartIndex + windowSize - 1);
+            
+            if (calculationStartIndex >= fullData.length) {
+                return { ratios: [], dates: [] };
+            }
+            
+            const rollingSharpeRatios = [];
+            const rollingSharpesDates = [];
+            
+            // Calculate rolling Sharpe for each day starting from calculationStartIndex
+            for (let i = calculationStartIndex; i < fullData.length; i++) {
+                const currentDate = new Date(fullData[i].date);
+                
+                // Only include dates within our time period
+                if (currentDate >= boundaries.start && currentDate <= boundaries.end) {
+                    // Get the rolling window of daily returns (windowSize days ending at day i)
+                    const windowReturns = [];
+                    for (let j = i - windowSize + 1; j <= i; j++) {
+                        if (j >= 0) {
+                            windowReturns.push(fullData[j].dailyReturn);
+                        }
+                    }
+                    
+                    if (windowReturns.length === windowSize) {
+                        // Calculate excess returns
+                        const excessReturns = windowReturns.map(r => r - riskFreeRate);
+                        
+                        // Calculate mean and standard deviation
+                        const mean = excessReturns.reduce((sum, r) => sum + r, 0) / excessReturns.length;
+                        const variance = excessReturns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / (excessReturns.length - 1);
+                        const stdDev = Math.sqrt(variance);
+                        
+                        // Calculate Sharpe ratio (annualized)
+                        const annualizedMean = mean * 252; // Assuming 252 trading days
+                        const annualizedStdDev = stdDev * Math.sqrt(252);
+                        const sharpeRatio = annualizedStdDev !== 0 ? annualizedMean / annualizedStdDev : null;
+                        
+                        rollingSharpeRatios.push(sharpeRatio);
+                        rollingSharpesDates.push(fullData[i].date);
+                    }
+                }
+            }
+            
+            return { ratios: rollingSharpeRatios, dates: rollingSharpesDates };
+        }
+        
+        // Update chart based on selected metric
+        async function updateChart() {
+            const selectedMetric = document.getElementById('metricSelector').value;
+            const selectedFund = document.getElementById('fundSelector').value;
+            const timePeriod = document.getElementById('timePeriod').value;
+            const chartMode = document.getElementById('chartMode').value;
+            
+            // Show loading status
+            const statusDiv = document.getElementById('chartStatus');
+            statusDiv.innerHTML = 'Loading fund data...';
+            statusDiv.style.display = 'block';
+            
+            try {
+                // Fetch real fund data (get full dataset)
+                const fullData = await fetchFundData(selectedFund);
+                
+                if (!fullData || fullData.length === 0) {
+                    throw new Error('No data available for this fund');
+                }
+                
+                let dates, chartData, chartLabel, yAxisLabel;
+                
+                if (selectedMetric === 'rollingSharpe') {
+                    // For rolling Sharpe, we need to handle the time period differently
+                    const windowSize = parseInt(document.getElementById('windowSize').value);
+                    
+                    if (fullData.length < windowSize) {
+                        throw new Error(`Insufficient data for rolling Sharpe calculation. Need at least ${windowSize} data points, but only ${fullData.length} available.`);
+                    }
+                    
+                    // Calculate rolling Sharpe with proper time period filtering
+                    const sharpeResult = calculateRollingSharpe(fullData, windowSize, timePeriod);
+                    chartData = sharpeResult.ratios;
+                    dates = sharpeResult.dates;
+                    chartLabel = `Rolling Sharpe Ratio (${windowSize} days)`;
+                    yAxisLabel = 'Sharpe Ratio';
+                    
+                    // Count non-null values for status
+                    const validSharpePoints = chartData.filter(val => val !== null).length;
+                    if (validSharpePoints === 0) {
+                        throw new Error('No valid Sharpe ratio data could be calculated for the selected time period');
+                    }
+                } else {
+                    // For other metrics, filter data first then calculate
+                    const filteredData = filterDataByPeriod(fullData, timePeriod);
+                    
+                    if (!filteredData || filteredData.length === 0) {
+                        throw new Error('No data available for the selected time period');
+                    }
+                    
+                    dates = filteredData.map(d => d.date);
+                    
+                    switch(selectedMetric) {
+                        case 'nav':
+                            chartData = filteredData.map(d => d.nav);
+                            chartLabel = 'NAV';
+                            yAxisLabel = 'Net Asset Value';
+                            
+                            // Check if NAV data is available
+                            if (chartData.every(val => val === null)) {
+                                throw new Error('NAV data is not available for this fund');
+                            }
+                            break;
+                            
+                        case 'totalReturn':
+                            chartData = calculateTotalReturnPercentage(filteredData);
+                            chartLabel = 'Total Return (%)';
+                            yAxisLabel = 'Total Return (%)';
+                            
+                            if (chartData.every(val => val === null)) {
+                                throw new Error('Total return data is not available for this fund');
+                            }
+                            break;
+                    }
+                }
+                
+                displayChart(dates, chartData, chartLabel, yAxisLabel);
+                updateChartStatus(selectedMetric, selectedFund, timePeriod, dates.length, chartData);
+                
+            } catch (error) {
+                console.error('Error updating chart:', error);
+                statusDiv.innerHTML = `Error: ${error.message}`;
+                statusDiv.style.color = '#dc3545';
+                
+                // Clear any existing chart
+                if (chart) {
+                    chart.destroy();
+                    chart = null;
+                }
+            }
+        }
+        
+        // Display chart with given data
+        function displayChart(dates, data, label, yAxisLabel) {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            
+            if (chart) {
+                chart.destroy();
+            }
+            
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                        borderWidth: 2,
+                        fill: false,
+                        spanGaps: false,
+                        pointRadius: 1,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            title: {
+                                display: true,
+                                text: yAxisLabel
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    if (value === null) {
+                                        return 'Insufficient data';
+                                    }
+                                    
+                                    if (label.includes('Sharpe')) {
+                                        return `${label}: ${value.toFixed(3)}`;
+                                    } else if (label.includes('Return')) {
+                                        return `${label}: ${value.toFixed(2)}%`;
+                                    } else {
+                                        return `${label}: ${value.toFixed(2)}`;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        }
+        
+        // Update chart status message
+        function updateChartStatus(metric, fund, period, dataPoints, chartData) {
+            const statusDiv = document.getElementById('chartStatus');
+            const metricNames = {
+                'nav': 'Net Asset Value',
+                'totalReturn': 'Total Return',
+                'rollingSharpe': 'Rolling Sharpe Ratio'
+            };
+            
+            let statusText = `Displaying ${metricNames[metric]} for ${fund} over ${period} period (${dataPoints} data points)`;
+            
+            // Add additional info for Sharpe ratio
+            if (metric === 'rollingSharpe' && chartData) {
+                const validPoints = chartData.filter(val => val !== null).length;
+                const windowSize = parseInt(document.getElementById('windowSize').value);
+                statusText += ` - ${validPoints} valid Sharpe ratio calculations (${windowSize} day window)`;
+            }
+            
+            statusDiv.innerHTML = statusText;
+            statusDiv.style.color = '#666';
+            statusDiv.style.display = 'block';
+        }
+        
+        // Add new fund functionality
+        async function addFund() {
+            const fundCode = prompt('Enter fund code (e.g., F000001234):');
+            if (!fundCode) return;
+            
+            const fundName = prompt('Enter fund name:');
+            if (!fundName) return;
+            
+            // Show loading message
+            const statusDiv = document.getElementById('chartStatus');
+            const originalContent = statusDiv.innerHTML;
+            statusDiv.innerHTML = `Validating fund ${fundCode}...`;
+            statusDiv.style.color = '#666';
+            
+            try {
+                // Test if fund exists by trying to fetch data
+                await fetchFundData(fundCode);
+                
+                // Add to selector if successful
+                const selector = document.getElementById('fundSelector');
+                const option = document.createElement('option');
+                option.value = fundCode;
+                option.textContent = `${fundName} (${fundCode})`;
+                selector.appendChild(option);
+                selector.value = fundCode;
+                
+                alert(`Fund ${fundName} (${fundCode}) added successfully!`);
+                statusDiv.innerHTML = originalContent;
+                
+            } catch (error) {
+                alert(`Error adding fund: ${error.message}`);
+                statusDiv.innerHTML = originalContent;
+            }
+        }
+        
+        // Event listeners
+        document.getElementById('metricSelector').addEventListener('change', function() {
+            const selectedMetric = this.value;
+            const windowConfig = document.getElementById('rollingWindowConfig');
+            const helpSection = document.getElementById('sharpeHelp');
+            
+            if (selectedMetric === 'rollingSharpe') {
+                windowConfig.style.display = 'block';
+                helpSection.style.display = 'block';
+            } else {
+                windowConfig.style.display = 'none';
+                helpSection.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('windowSize').addEventListener('change', function() {
+            if (document.getElementById('metricSelector').value === 'rollingSharpe') {
+                updateChart();
+            }
+        });
+        
+        // Initialize chart on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Don't auto-load, let user click update button
+            document.getElementById('chartStatus').innerHTML = 'Select a metric and click "Update Chart" to view real fund performance data';
+        });
+    </script>
+</body>
+</html>
