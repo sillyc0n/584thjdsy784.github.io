@@ -559,7 +559,7 @@
 
         async function fetchSingleFundData(startDate, endDate) {
             const fund = funds[currentFund];
-            const url = `https://quotes.sillyc0n.workers.dev/ms?query=${fund.symbol}:totalReturn,nav&frequency=d&startDate=${startDate}&endDate=${endDate}`;
+            const url = `https://quotes.4ge.uk/ms?query=${fund.symbol}:totalReturn,nav&frequency=d&startDate=${startDate}&endDate=${endDate}`;
             
             showStatus(`Fetching data from: ${url}`, 'debug');
             
@@ -605,7 +605,7 @@
 
         async function fetchAllFundsData(startDate, endDate) {
             const promises = funds.map(async (fund) => {
-                const url = `https://quotes.sillyc0n.workers.dev/ms?query=${fund.symbol}:totalReturn,nav&frequency=d&startDate=${startDate}&endDate=${endDate}`;
+                const url = `https://quotes.4ge.uk/ms?query=${fund.symbol}:totalReturn,nav&frequency=d&startDate=${startDate}&endDate=${endDate}`;
                 
                 try {
                     const response = await fetch(url);
